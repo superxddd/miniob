@@ -29,15 +29,26 @@ RC CharType::set_value_from_str(Value &val, const string &data) const
 RC CharType::cast_to(const Value &val, AttrType type, Value &result) const
 {
   switch (type) {
+    case AttrType::CHARS: {
+      result = val;
+      return RC::SUCCESS;
+    }
+    case AttrType::DATES: {
+      // parse string as YYYY-MM-DD
+      string s = val.get_string();
+      return DataType::type_instance(AttrType::DATES)->set_value_from_str(result, s);
+    }
     default: return RC::UNIMPLEMENTED;
   }
-  return RC::SUCCESS;
 }
 
 int CharType::cast_cost(AttrType type)
 {
   if (type == AttrType::CHARS) {
     return 0;
+  }
+  if (type == AttrType::DATES) {
+    return 1;
   }
   return INT32_MAX;
 }
