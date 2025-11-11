@@ -89,6 +89,7 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         STRING_T
         FLOAT_T
         VECTOR_T
+        DATE_T
         HELP
         EXIT
         DOT //QUOTE
@@ -381,6 +382,7 @@ type:
     | STRING_T { $$ = static_cast<int>(AttrType::CHARS); }
     | FLOAT_T  { $$ = static_cast<int>(AttrType::FLOATS); }
     | VECTOR_T { $$ = static_cast<int>(AttrType::VECTORS); }
+    | DATE_T   { $$ = static_cast<int>(AttrType::DATES); }
     ;
 primary_key:
     /* empty */
@@ -476,6 +478,7 @@ update_stmt:      /*  update 语句的语法解析树*/
       $$->update.relation_name = $2;
       $$->update.attribute_name = $4;
       $$->update.value = *$6;
+      delete $6;
       if ($7 != nullptr) {
         $$->update.conditions.swap(*$7);
         delete $7;
