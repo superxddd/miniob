@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/os/path.h"
 #include "common/global_context.h"
 #include "storage/common/meta_util.h"
+#include "common/lang/filesystem.h"
 #include "storage/table/table.h"
 #include "storage/table/table_meta.h"
 #include "storage/trx/trx.h"
@@ -173,6 +174,41 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
 
   opened_tables_[table_name] = table;
   LOG_INFO("Create table success. table name=%s, table_id:%d", table_name, table_id);
+  return RC::SUCCESS;
+}
+
+RC Db::drop_table(const char *table_name)
+{
+  if (common::is_blank(table_name)) {
+    LOG_WARN("invalid table name");
+    return RC::INVALID_ARGUMENT;
+  }
+
+  auto it = opened_tables_.find(table_name);
+  if (it == opened_tables_.end()) {
+    LOG_WARN("table not exist: %s", table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  Table *table = it->second;
+  const TableMeta &meta = table->table_meta();
+
+  // delete data/index/lob/meta files; ignore errors for non-existent files
+  error_code ec;
+  filesystem::remove(table_data_file(path_.c_str(), meta.name()), ec);
+  filesystem::remove(table_lob_file(path_.c_str(), meta.name()), ec);
+  for (int i = 0; i < meta.index_num(); i++) {
+    const IndexMeta *index_meta = meta.index(i);
+    if (index_meta != nullptr) {
+      filesystem::remove(table_index_file(path_.c_str(), meta.name(), index_meta->name()), ec);
+    }
+  }
+  filesystem::remove(table_meta_file(path_.c_str(), meta.name()), ec);
+
+  delete table;
+  opened_tables_.erase(it);
+
+  LOG_INFO("Drop table success. table=%s", table_name);
   return RC::SUCCESS;
 }
 
